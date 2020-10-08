@@ -1,0 +1,13 @@
+opencv-python
+pillow
+lxml
+Cython
+contextlib2
+jupyter
+matplotlib
+numpy
+scipy
+boto3
+pycocotools
+pyyaml
+google-cloud-storage
