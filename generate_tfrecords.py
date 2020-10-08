@@ -18,7 +18,7 @@ def encode_utf8_string(text, length, dic, null_id):
     char_ids_padded = [null_id]*length
     char_ids_unpadded = [null_id]*len(text)
     for i in range(len(text)):
-        if i == '\t':
+        if text[i] == '\t':
            continue
         hash_id = dic[text[i]]
         char_ids_padded[i] = hash_id
