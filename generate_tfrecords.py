@@ -18,6 +18,8 @@ def encode_utf8_string(text, length, dic, null_id):
     char_ids_padded = [null_id]*length
     char_ids_unpadded = [null_id]*len(text)
     for i in range(len(text)):
+        #if i == '\n':
+         #   continue
         hash_id = dic[text[i]]
         char_ids_padded[i] = hash_id
         char_ids_unpadded[i] = hash_id
@@ -56,7 +58,7 @@ def get_tfrecords(args):
         for text in open(label_paths[j], encoding="utf"):
             print(text)
             char_ids_padded, char_ids_unpadded = encode_utf8_string(
-                                text=text,
+                                text=text.strip('\n'),
                                 dic=dict,
                                 length=args.text_length,
                                 null_id=args.null_id)
