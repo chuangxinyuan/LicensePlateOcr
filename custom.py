@@ -9,7 +9,7 @@ DEFAULT_CONFIG = {
         'MYDATASET',
     'splits': {
         'train': {
-            'size': 833,
+            'size': 827,
             'pattern': 'tfexample_train'
         },
 #         'test': {
@@ -23,7 +23,7 @@ DEFAULT_CONFIG = {
     'num_of_views':
         1,
     'max_sequence_length':
-        17,
+        14,
     'null_code':
         133,
     'items_to_descriptions': {
