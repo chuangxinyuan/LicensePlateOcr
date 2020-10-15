@@ -109,7 +109,7 @@ def mainDataset(dataset,weights,output_path):
         # load the input image (in BGR order), clone it, and preprocess it
         #print("[INFO] predicting on image {} of {}".format(i + 1,
         #	len(imagePaths)))
-
+        print("Processing: ", imagePath)
         # load the input image (in BGR order), clone it, and preprocess it
         image = cv2.imread(imagePath)
         width, height = image.shape[:2]
