@@ -10,4 +10,3 @@ scipy
 boto3
 pycocotools
 pyyaml
-google-cloud-storage
