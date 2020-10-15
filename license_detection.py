@@ -111,11 +111,12 @@ def mainDataset(dataset,weights,output_path):
         #	len(imagePaths)))
 
         # load the input image (in BGR order), clone it, and preprocess it
-        image = Image.open(imagePath)
-        width, height = image.size
+        image = cv2.imread(imagePath)
+        width, height = image.shape[:2]
+        image_pil = Image.fromarray(image)
         if width > 1920 or height > 1080:
-            image = image.resize((width // 2, height // 2), Image.ANTIALIAS)
-        image_np = load_image_into_numpy(image)
+            image_pil = image_pil.resize((width // 2, height // 2), Image.ANTIALIAS)
+        image_np = np.array(image_pil)
         image_np_expanded = np.expand_dims(image_np, axis=0)
 
         image_tensor = detection_graph.get_tensor_by_name('image_tensor:0')
