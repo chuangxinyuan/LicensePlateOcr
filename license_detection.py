@@ -131,7 +131,7 @@ def mainDataset(dataset,weights,output_path):
             if scores[0][i] >= 0.5:
                 xmin, ymin, xmax, ymax = _normalize_box(boxes[0][i], width, height)
                 label = CLASSES[classes[0][i]]
-                result.append(([label, [xmin, ymin, xmax, ymax]], scores[0][i]))
+                result.append({'label':label, 'xmin': xmin, 'ymin':ymin, 'xmax':xmax, 'ymax':ymax})
         output['annotations'][imagePath]  = str(result)
         # parse the filename from the input image path, construct the
         # path to the output image, and write the image to disk
