@@ -109,6 +109,8 @@ def main(_):
   data = open(FLAGS.license_boxes_json_path, 'r')
   annotations = ast.literal_eval(data.read())['annotations']
   FLAGS.batch_size = 1
+  if not os.path.exists('/mnt/output/'):
+      os.makedirs('/mnt/output/')
   d = open(os.path.join(FLAGS.checkpoint, 'checkpoint'), 'r')
   for line in d.readlines():
     if not 'all_model_checkpoint_path' in line:
