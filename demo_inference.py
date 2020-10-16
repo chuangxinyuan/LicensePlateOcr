@@ -109,9 +109,13 @@ def main(_):
   data = open(FLAGS.license_boxes_json_path, 'r')
   annotations = ast.literal_eval(data.read())['annotations']
   FLAGS.batch_size = 1
-  run(FLAGS.checkpoint, FLAGS.batch_size, FLAGS.dataset_name,
+  d = open(os.path.join(FLAGS.checkpoint, 'checkpoint'), 'r')
+  for line in d.readlines():
+    if not 'all_model_checkpoint_path' in line:
+        checkpoint = os.path.basename(line.split(':')[1].strip().strip('"'))
+        break
+  run(os.path.join(FLAGS.checkpoint, checkpoint), FLAGS.batch_size, FLAGS.dataset_name,
                     FLAGS.image_path_pattern, annotations)
-
 
 
 if __name__ == '__main__':
