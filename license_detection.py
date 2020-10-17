@@ -29,58 +29,6 @@ def _normalize_box(box, w, h):
     ymax = int(box[2] * h)
     return xmin, ymin, xmax, ymax
 
-
-def generateXML(filename,outputPath,w,h,d,boxes):
-    top = ET.Element('annotation')
-    childFolder = ET.SubElement(top, 'folder')
-    childFolder.text = 'images'
-    childFilename = ET.SubElement(top, 'filename')
-    childFilename.text = filename[0:filename.rfind(".")]
-    childPath = ET.SubElement(top, 'path')
-    childPath.text = outputPath + "/" + filename
-    childSource = ET.SubElement(top, 'source')
-    childDatabase = ET.SubElement(childSource, 'database')
-    childDatabase.text = 'Unknown'
-    childSize = ET.SubElement(top, 'size')
-    childWidth = ET.SubElement(childSize, 'width')
-    childWidth.text = str(w)
-    childHeight = ET.SubElement(childSize, 'height')
-    childHeight.text = str(h)
-    childDepth = ET.SubElement(childSize, 'depth')
-    childDepth.text = str(d)
-    childSegmented = ET.SubElement(top, 'segmented')
-    childSegmented.text = str(0)
-    #boxes tiene que contener labels
-    for (box,score) in boxes:
-        # Cambiar categoria por label
-        category = box[0]
-        box = box[1].astype("int")
-        ####### 
-        # Cuidado esto está cambiado con respecto a lo que es habitualmente
-        #######  
-        (x,y,xmax,ymax) = box
-        childObject = ET.SubElement(top, 'object')
-        childName = ET.SubElement(childObject, 'name')
-        childName.text = category
-        childScore = ET.SubElement(childObject, 'confidence')
-        childScore.text = str(score)
-        childPose = ET.SubElement(childObject, 'pose')
-        childPose.text = 'Unspecified'
-        childTruncated = ET.SubElement(childObject, 'truncated')
-        childTruncated.text = '0'
-        childDifficult = ET.SubElement(childObject, 'difficult')
-        childDifficult.text = '0'
-        childBndBox = ET.SubElement(childObject, 'bndbox')
-        childXmin = ET.SubElement(childBndBox, 'xmin')
-        childXmin.text = str(x)
-        childYmin = ET.SubElement(childBndBox, 'ymin')
-        childYmin.text = str(y)
-        childXmax = ET.SubElement(childBndBox, 'xmax')
-        childXmax.text = str(xmax)
-        childYmax = ET.SubElement(childBndBox, 'ymax')
-        childYmax.text = str(ymax)
-    return prettify(top)
-
 def load_image_into_numpy(image):
 	(im_width, im_height) = image.size
 	return np.array(image.getdata()).reshape((im_height, im_width, 3)).astype(np.uint8)
@@ -133,13 +81,7 @@ def mainDataset(dataset,weights,output_path):
                 label = CLASSES[classes[0][i]]
                 result.append({'label':label, 'xmin': xmin, 'ymin':ymin, 'xmax':xmax, 'ymax':ymax})
         output['annotations'][imagePath]  = str(result)
-        # parse the filename from the input image path, construct the
-        # path to the output image, and write the image to disk
-#         filename = imagePath.split(os.path.sep)[-1]
-#         #outputPath = os.path.sep.join([args["output"], filename])
-#         file = open(imagePath[0:imagePath.rfind(".")]+".xml", "w")
-#         file.write(generateXML(imagePath[0:imagePath.rfind(".")],imagePath,width, height, 3, result))
-#         file.close()
+      
     if not os.path.exists(output_path):
         os.makedirs(output_path)
     json.dump(output, open(output_path+'output.json', 'w'))
