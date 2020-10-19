@@ -80,7 +80,7 @@ def mainDataset(dataset,weights,output_path):
                 xmin, ymin, xmax, ymax = _normalize_box(boxes[0][i], width, height)
                 label = CLASSES[classes[0][i]]
                 result.append({'label':label, 'xmin': xmin, 'ymin':ymin, 'xmax':xmax, 'ymax':ymax})
-        output['annotations'][imagePath]  = str(result)
+        output['annotations'][imagePath]  = result
       
     if not os.path.exists(output_path):
         os.makedirs(output_path)
