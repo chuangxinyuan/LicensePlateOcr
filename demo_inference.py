@@ -106,7 +106,7 @@ def run(checkpoint, batch_size, dataset_name, image_path_pattern, annotations):
             cv2.rectangle(img,(box['xmin'],box['ymin']),(box['xmax'],box['ymax']),(0,255,0),3)
             cv2.putText(img, output.replace('?',''), (box['xmin'],box['ymin']-10), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2, cv2.LINE_AA)
 #             file_writer.write([pr_bytes.decode('utf-8') for pr_bytes in predictions.tolist()][0])
-        cv2.imwrite('/data/out/'+os.path.basename(path), img)
+        cv2.imwrite('/mnt/output/'+os.path.basename(path), img)
   
 
 
