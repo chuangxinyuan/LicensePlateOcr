@@ -60,7 +60,7 @@ def mainDataset(dataset,weights,output_path):
         print("Processing: ", imagePath)
         # load the input image (in BGR order), clone it, and preprocess it
         image = cv2.imread(imagePath)
-        width, height = image.shape[:2]
+        height, width = image.shape[:2]
         image_pil = Image.fromarray(image)
         if width > 1920 or height > 1080:
             image_pil = image_pil.resize((width // 2, height // 2), Image.ANTIALIAS)
