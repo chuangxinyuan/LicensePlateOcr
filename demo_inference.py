@@ -94,12 +94,12 @@ def run(checkpoint, batch_size, dataset_name, image_path_pattern, annotations):
         print("Processing: ", path) 
         img = cv2.imread(os.path.join('/mnt/data/datasets/images', os.path.basename(path)))
         for box in boxes:
-            img_cropped = img[box['xmin']:box['xmax']+1, box['ymin']:box['ymax']+1]
+            img_cropped = img[box['ymin']:box['ymax']+1, box['xmin']:box['xmax']+1]
             pil_img = PIL.Image.fromarray(img_cropped)
-            img = pil_img.resize((width, height), PIL.Image.ANTIALIAS)
+            pil_img_cropped = pil_img.resize((width, height), PIL.Image.ANTIALIAS)
             count += 1
             predictions = sess.run(endpoints.predicted_text,
-                           feed_dict={images_placeholder: np.asarray(img)[np.newaxis, ...]})
+                           feed_dict={images_placeholder: np.asarray(pil_img_cropped)[np.newaxis, ...]})
             file_writer = open('/mnt/output/'+os.path.basename(path).split('.')[0]+'.txt', 'w')
             file_writer.write([pr_bytes.decode('utf-8') for pr_bytes in predictions.tolist()][0])
   
