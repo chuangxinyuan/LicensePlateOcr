@@ -23,6 +23,7 @@ from tensorflow.python.training import monitored_session
 import cv2
 import os
 import common_flags
+import re
 import datasets
 import ast
 import data_provider
@@ -100,8 +101,12 @@ def run(checkpoint, batch_size, dataset_name, image_path_pattern, annotations):
             count += 1
             predictions = sess.run(endpoints.predicted_text,
                            feed_dict={images_placeholder: np.asarray(pil_img_cropped)[np.newaxis, ...]})
-            file_writer = open('/mnt/output/'+os.path.basename(path).split('.')[0]+'.txt', 'w')
-            file_writer.write([pr_bytes.decode('utf-8') for pr_bytes in predictions.tolist()][0])
+            output = [pr_bytes.decode('utf-8') for pr_bytes in predictions.tolist()][0]
+            output = re.sub(r'([^\s\w]|_)+', '', output)
+            cv2.rectangle(img,(box['xmin'],box['ymin']),(box['xmax'],box['ymax']),(0,255,0),3)
+            cv2.putText(img, output.replace('?',''), (box['xmin'],box['ymin']-10), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2, cv2.LINE_AA)
+#             file_writer.write([pr_bytes.decode('utf-8') for pr_bytes in predictions.tolist()][0])
+        cv2.imwrite('/data/out/'+os.path.basename(path), img)
   
 
 
