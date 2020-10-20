@@ -1,0 +1,162 @@
+arguments:
+  parameters:
+  - name: cvat-annotation-path
+    value: annotation-dump/license-workflow-test
+    displayName: Path to dataset
+    visibility: private
+
+  - name: cvat-output-path
+    value: workflow-data/output/test-workflow-output
+    visibility: private
+
+  - name: dump-format
+    value: cvat_coco
+    displayName: CVAT dump format
+    visibility: public
+
+  - name: detector-path
+    value: rush/workflow-data/output/license-detector/tf-object-detection-training/frcnn-res101-coco/tf-object-detection-training-66pnc/
+    displayName: Path to object detector model
+    visibility: public
+
+  - name: ocr-model-path
+    value: savan/workflow-data/output/license-plate-ocr-output1/attention-ocr-training-vstcx/
+    displayName: Path to ocr detector model
+    visibility: public
+
+  - name: tf-image
+    value: tensorflow/tensorflow:1.13.1-py3
+    type: select.select
+    displayName: Select TensorFlow image
+    visibility: public
+    hint: Select the GPU image if you are running on a GPU node pool
+    options:
+    - name: 'TensorFlow 1.13.1 CPU Image'
+      value: 'tensorflow/tensorflow:1.13.1-py3'
+    - name: 'TensorFlow 1.13.1 GPU Image'
+      value: 'tensorflow/tensorflow:1.13.1-gpu-py3'
+
+entrypoint: main
+templates:
+  - name: main
+    dag:
+      tasks:
+      - name: process-input-data
+        template: bash
+      - name: detect-license-plate
+        dependencies: [process-input-data]
+        template: license-detector
+      - name: detect-ocr
+        dependencies: [detect-license-plate]
+        template: ocr-detector
+   
+  - name: ocr-detector
+    inputs:
+      artifacts:
+      - name: tsrc
+        path: /mnt/src/train
+        git:
+          repo: 'https://github.com/onepanelio/LicensePlateOcr.git'
+      - git:
+          repo: https://github.com/tensorflow/models.git
+        name: src
+        path: /mnt/src/tf
+      - name: data
+        path: /mnt/data/datasets/
+        s3:
+          key: '{{workflow.namespace}}/{{workflow.parameters.cvat-annotation-path}}'
+      - name: ocr-model
+        path: /mnt/data/models/
+        s3:
+          key: '{{workflow.parameters.ocr-model-path}}'
+      - name: output-data
+        path: /mnt/data/outputdata/
+        s3:
+          key: '{{workflow.namespace}}/{{workflow.parameters.cvat-output-path}}/{{workflow.name}}'
+    outputs:
+      artifacts:
+      - name: model
+        path: /mnt/output
+        optional: true
+        s3:
+          key: '{{workflow.namespace}}/{{workflow.parameters.cvat-output-path}}/{{workflow.name}}'
+    container:
+      image: '{{workflow.parameters.tf-image}}'
+      command: [sh,-c]
+      args:
+       - |
+          apt-get update && \
+          apt-get install -y python3-pip git wget unzip libglib2.0-0 libsm6 libxext6 libxrender-dev && \
+
+          cd /mnt/src/tf/research && \
+          export PYTHONPATH=$PYTHONPATH:`pwd`:`pwd`/slim && \
+          cd /mnt/src/train && \
+          pip install -r requirements.txt && \
+          cp -f custom.py /mnt/src/tf/research/attention_ocr/python/datasets/ && \
+          cp -f __init__.py /mnt/src/tf/research/attention_ocr/python/datasets/ && \
+          cp -f demo_inference.py /mnt/src/tf/research/attention_ocr/python/ && \
+          cp -f ./data/charset_size.txt /mnt/data/datasets/ && \
+         
+          cd /mnt/src/tf/research/attention_ocr/python/ && \
+          export PYTHONPATH=$PYTHONPATH:./datasets/ && \
+          python demo_inference.py \
+            --dataset_name=custom \
+            --checkpoint=/mnt/data/models/ \
+            --batch_size=1 \
+            --license_boxes_json_path=/mnt/data/outputdata/output.json
+            
+      workingDir: /mnt/src
+
+  - name: license-detector
+    inputs:
+      artifacts:
+      - name: src
+        path: /mnt/src
+        git:
+          repo: "https://github.com/onepanelio/LicensePlateOcr.git"
+      - name: data
+        path: /mnt/data/datasets/
+        s3:
+          key: '{{workflow.namespace}}/{{workflow.parameters.cvat-annotation-path}}'
+      - name: models
+        path: /mnt/data/models
+        s3:
+          key: '{{workflow.parameters.detector-path}}'
+    outputs:
+      artifacts:
+      - name: model
+        path: /mnt/output
+        optional: true
+        s3:
+          key: '{{workflow.namespace}}/{{workflow.parameters.cvat-output-path}}/{{workflow.name}}'
+    container:
+      image: '{{workflow.parameters.tf-image}}'
+      command: [sh,-c]
+      args:
+       - |
+        ls /mnt/data/ \
+        && apt update \
+        && apt install libgl1-mesa-glx ffmpeg libsm6 libxext6 libglib2.0-0 libxext6 libxrender-dev wget unzip -y \
+        && cd /mnt/src/ \
+        && pip install -r requirements.txt \
+        && python license_detection.py --weights=/mnt/data/models/frozen_inference_graph.pb --dataset=/mnt/data/datasets/images/
+      workingDir: /mnt/src
+      volumeMounts:
+      - name: output
+        mountPath: /mnt/output
+  - name: bash
+    container:
+      args:
+      - sleep 15
+      command:
+      - bash
+      - -c
+      image: bash
+volumeClaimTemplates:
+  - metadata:
+      name: output
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      resources:
+        requests:
+          storage: 2Gi
