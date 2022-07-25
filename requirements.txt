@@ -10,3 +10,5 @@ scipy
 boto3
 pycocotools
 pyyaml
+imutils
+torch
