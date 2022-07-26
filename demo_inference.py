@@ -106,10 +106,10 @@ def run(args, annotations):
 
 
           cv2.rectangle(img,(box['xmin'],box['ymin']),(box['xmax'],box['ymax']),(0,255,0),3)
-          font = ImageFont.truetype('yahei_mono_0.ttf',60)
+          font = ImageFont.truetype('yahei_mono_0.ttf',40)
           img_pil = Image.fromarray(cv2.cvtColor(img,cv2.COLOR_BGR2RGB))
           draw = ImageDraw.Draw(img_pil)
-          draw.text((box['xmin'],box['ymin']-10),output.replace('?',''),font=font,fill=(0,255,0)) 
+          draw.text((box['xmin'],box['ymin']+40),output.replace('?',''),font=font,fill=(0,255,0)) 
           img_ocv = np.array(img_pil)                    
           img = cv2.cvtColor(img_ocv,cv2.COLOR_RGB2BGR)
 #             file_writer.write([pr_bytes.decode('utf-8') for pr_bytes in predictions.tolist()][0])
