@@ -1,28 +1,23 @@
 arguments:
   parameters:
   - name: cvat-annotation-path
-    value: annotation-dump/license-workflow-test
+    value: cyl-data/license-china/
     displayName: Path to dataset
-    visibility: private
+    visibility: public
 
   - name: cvat-output-path
     value: workflow-data/output/test-workflow-output
     visibility: private
 
-  - name: dump-format
-    value: cvat_coco
-    displayName: CVAT dump format
-    visibility: public
-
   - name: detector-path
-    value: rush/workflow-data/output/license-detector/tf-object-detection-training/frcnn-res101-coco/tf-object-detection-training-66pnc/
+    value: artifacts/cyl/cyl-object-detection-5256x/cyl-object-detection-5256x-2554036786/output/model
     displayName: Path to object detector model
     visibility: public
-
-  - name: ocr-model-path
-    value: savan/workflow-data/output/license-plate-ocr-output1/attention-ocr-training-vstcx/
-    displayName: Path to ocr detector model
-    visibility: public
+    
+  - name: ocr-image
+    value: tensorflow/tensorflow:1.13.1-py3
+    displayName: docker image for ocr
+    visibility: public  
 
   - name: tf-image
     value: tensorflow/tensorflow:1.13.1-py3
@@ -35,6 +30,13 @@ arguments:
       value: 'tensorflow/tensorflow:1.13.1-py3'
     - name: 'TensorFlow 1.13.1 GPU Image'
       value: 'tensorflow/tensorflow:1.13.1-gpu-py3'
+  - displayName: Node pool
+    hint: Name of node pool or group to run this workflow task
+    name: sys-node-pool
+    required: true
+    type: select.nodepool
+    value: 'Standard_B4ms'
+    visibility: public
 
 entrypoint: main
 templates:
@@ -51,12 +53,14 @@ templates:
         template: ocr-detector
    
   - name: ocr-detector
+    nodeSelector:
+      'node.kubernetes.io/instance-type': '{{workflow.parameters.sys-node-pool}}'  
     inputs:
       artifacts:
       - name: tsrc
         path: /mnt/src/train
         git:
-          repo: 'https://github.com/onepanelio/LicensePlateOcr.git'
+          repo: 'https://github.com/chuangxinyuan/LicensePlateOcr.git'
       - git:
           repo: https://github.com/tensorflow/models.git
         name: src
@@ -64,11 +68,7 @@ templates:
       - name: data
         path: /mnt/data/datasets/
         s3:
-          key: '{{workflow.namespace}}/{{workflow.parameters.cvat-annotation-path}}'
-      - name: ocr-model
-        path: /mnt/data/models/
-        s3:
-          key: '{{workflow.parameters.ocr-model-path}}'
+          key: '{{workflow.parameters.cvat-annotation-path}}'
       - name: output-data
         path: /mnt/data/outputdata/
         s3:
@@ -81,43 +81,46 @@ templates:
         s3:
           key: '{{workflow.namespace}}/{{workflow.parameters.cvat-output-path}}/{{workflow.name}}'
     container:
-      image: '{{workflow.parameters.tf-image}}'
+      image: '{{workflow.parameters.ocr-image}}'
       command: [sh,-c]
       args:
        - |
           apt-get update && \
+          echo Y | apt-get install build-essential libssl-dev libffi-dev python-dev && \
           apt-get install -y python3-pip git wget unzip libglib2.0-0 libsm6 libxext6 libxrender-dev && \
-
           cd /mnt/src/tf/research && \
           export PYTHONPATH=$PYTHONPATH:`pwd`:`pwd`/slim && \
           cd /mnt/src/train && \
-          pip install -r requirements.txt && \
+          pip install -i https://pypi.tuna.tsinghua.edu.cn/simple -r requirements.txt && \
           cp -f custom.py /mnt/src/tf/research/attention_ocr/python/datasets/ && \
           cp -f __init__.py /mnt/src/tf/research/attention_ocr/python/datasets/ && \
           cp -f demo_inference.py /mnt/src/tf/research/attention_ocr/python/ && \
           cp -f ./data/charset_size.txt /mnt/data/datasets/ && \
-         
+          cp -f lpr_model.pth /mnt/src/tf/research/attention_ocr/python/ &&\
+          cp -f LPRNet.py /mnt/src/tf/research/attention_ocr/python/ &&\
+          cp -f yahei_mono_0.ttf /mnt/src/tf/research/attention_ocr/python/ &&\
+          
           cd /mnt/src/tf/research/attention_ocr/python/ && \
+
+          ls && \
           export PYTHONPATH=$PYTHONPATH:./datasets/ && \
-          python demo_inference.py \
-            --dataset_name=custom \
-            --checkpoint=/mnt/data/models/ \
-            --batch_size=1 \
-            --license_boxes_json_path=/mnt/data/outputdata/output.json
+          python demo_inference.py 
             
       workingDir: /mnt/src
 
   - name: license-detector
+    nodeSelector:
+      'node.kubernetes.io/instance-type': '{{workflow.parameters.sys-node-pool}}' 
     inputs:
       artifacts:
       - name: src
         path: /mnt/src
         git:
-          repo: "https://github.com/onepanelio/LicensePlateOcr.git"
+          repo: "https://github.com/chuangxinyuan/LicensePlateOcr.git"
       - name: data
         path: /mnt/data/datasets/
         s3:
-          key: '{{workflow.namespace}}/{{workflow.parameters.cvat-annotation-path}}'
+          key: '{{workflow.parameters.cvat-annotation-path}}'
       - name: models
         path: /mnt/data/models
         s3:
@@ -135,16 +138,20 @@ templates:
       args:
        - |
         ls /mnt/data/ \
-        && apt update \
-        && apt install libgl1-mesa-glx ffmpeg libsm6 libxext6 libglib2.0-0 libxext6 libxrender-dev wget unzip -y \
-        && cd /mnt/src/ \
-        && pip install -r requirements.txt \
-        && python license_detection.py --weights=/mnt/data/models/frozen_inference_graph.pb --dataset=/mnt/data/datasets/images/
+          && apt-get update \
+          && echo Y | apt-get install build-essential libssl-dev libffi-dev python-dev \
+          && apt-get install libgl1-mesa-glx libsm6 libxext6 libglib2.0-0 libxext6 libxrender-dev wget unzip -y \
+          && cd /mnt/src/ \
+          && pip install -i https://pypi.tuna.tsinghua.edu.cn/simple -r requirements.txt \
+          && python license_detection.py --weights=/mnt/data/models/frozen_inference_graph.pb --dataset=/mnt/data/datasets/images/
+
       workingDir: /mnt/src
       volumeMounts:
       - name: output
         mountPath: /mnt/output
   - name: bash
+    nodeSelector:
+      'node.kubernetes.io/instance-type': '{{workflow.parameters.sys-node-pool}}' 
     container:
       args:
       - sleep 15
