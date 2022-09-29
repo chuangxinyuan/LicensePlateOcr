@@ -61,6 +61,7 @@ templates:
         path: /mnt/src/train
         git:
           repo: 'https://github.com/chuangxinyuan/LicensePlateOcr.git'
+          revision: aimp-v0.95
       - git:
           repo: https://github.com/tensorflow/models.git
         name: src
@@ -117,6 +118,7 @@ templates:
         path: /mnt/src
         git:
           repo: "https://github.com/chuangxinyuan/LicensePlateOcr.git"
+          revision: aimp-v0.95
       - name: data
         path: /mnt/data/datasets/
         s3:
