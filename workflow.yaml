@@ -15,21 +15,21 @@ arguments:
     visibility: public
     
   - name: ocr-image
-    value: tensorflow/tensorflow:1.13.1-py3
+    value: cxyacr.azurecr.cn/docker.io/tensorflow/tensorflow:1.13.1-py3
     displayName: docker image for ocr
     visibility: public  
 
   - name: tf-image
-    value: tensorflow/tensorflow:1.13.1-py3
+    value: cxyacr.azurecr.cn/docker.io/tensorflow/tensorflow:1.13.1-py3
     type: select.select
     displayName: Select TensorFlow image
     visibility: public
     hint: Select the GPU image if you are running on a GPU node pool
     options:
     - name: 'TensorFlow 1.13.1 CPU Image'
-      value: 'tensorflow/tensorflow:1.13.1-py3'
+      value: 'cxyacr.azurecr.cn/docker.io/tensorflow/tensorflow:1.13.1-py3'
     - name: 'TensorFlow 1.13.1 GPU Image'
-      value: 'tensorflow/tensorflow:1.13.1-gpu-py3'
+      value: 'cxyacr.azurecr.cn/docker.io/tensorflow/tensorflow:1.13.1-gpu-py3'
   - displayName: Node pool
     hint: Name of node pool or group to run this workflow task
     name: sys-node-pool
@@ -54,7 +54,7 @@ templates:
    
   - name: ocr-detector
     nodeSelector:
-      'node.kubernetes.io/instance-type': '{{workflow.parameters.sys-node-pool}}'  
+      'beta.kubernetes.io/instance-type': '{{workflow.parameters.sys-node-pool}}'  
     inputs:
       artifacts:
       - name: tsrc
@@ -63,7 +63,7 @@ templates:
           repo: 'https://github.com/chuangxinyuan/LicensePlateOcr.git'
           revision: aimp-v0.95
       - git:
-          repo: https://github.com/tensorflow/models.git
+          repo: https://github.com/chuangxinyuan/models.git
         name: src
         path: /mnt/src/tf
       - name: data
@@ -111,7 +111,7 @@ templates:
 
   - name: license-detector
     nodeSelector:
-      'node.kubernetes.io/instance-type': '{{workflow.parameters.sys-node-pool}}' 
+      'beta.kubernetes.io/instance-type': '{{workflow.parameters.sys-node-pool}}' 
     inputs:
       artifacts:
       - name: src
@@ -153,14 +153,14 @@ templates:
         mountPath: /mnt/output
   - name: bash
     nodeSelector:
-      'node.kubernetes.io/instance-type': '{{workflow.parameters.sys-node-pool}}' 
+      'beta.kubernetes.io/instance-type': '{{workflow.parameters.sys-node-pool}}' 
     container:
       args:
       - sleep 15
       command:
       - bash
       - -c
-      image: bash
+      image: cxyacr.azurecr.cn/docker.io/bash:5.2.0
 volumeClaimTemplates:
   - metadata:
       name: output
