@@ -92,7 +92,7 @@ templates:
           cd /mnt/src/tf/research && \
           export PYTHONPATH=$PYTHONPATH:`pwd`:`pwd`/slim && \
           cd /mnt/src/train && \
-          pip install -i https://pypi.tuna.tsinghua.edu.cn/simple -r requirements.txt && \
+          pip install -i https://pypi.tuna.tsinghua.edu.cn/simple -r requirements.txt --default-timeout=6000  && \
           cp -f custom.py /mnt/src/tf/research/attention_ocr/python/datasets/ && \
           cp -f __init__.py /mnt/src/tf/research/attention_ocr/python/datasets/ && \
           cp -f demo_inference.py /mnt/src/tf/research/attention_ocr/python/ && \
@@ -144,7 +144,7 @@ templates:
           && echo Y | apt-get install build-essential libssl-dev libffi-dev python-dev \
           && apt-get install libgl1-mesa-glx libsm6 libxext6 libglib2.0-0 libxext6 libxrender-dev wget unzip -y \
           && cd /mnt/src/ \
-          && pip install -i https://pypi.tuna.tsinghua.edu.cn/simple -r requirements.txt \
+          && pip install -i https://pypi.tuna.tsinghua.edu.cn/simple -r requirements.txt --default-timeout=6000 \
           && python license_detection.py --weights=/mnt/data/models/frozen_inference_graph.pb --dataset=/mnt/data/datasets/images/
 
       workingDir: /mnt/src
