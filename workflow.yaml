@@ -61,7 +61,7 @@ templates:
         path: /mnt/src/train
         git:
           repo: 'https://github.com/chuangxinyuan/LicensePlateOcr.git'
-          revision: aimp-v0.95
+          revision: v1.0.0-aimp
       - git:
           repo: https://github.com/chuangxinyuan/models.git
         name: src
@@ -118,7 +118,7 @@ templates:
         path: /mnt/src
         git:
           repo: "https://github.com/chuangxinyuan/LicensePlateOcr.git"
-          revision: aimp-v0.95
+          revision: v1.0.0-aimp
       - name: data
         path: /mnt/data/datasets/
         s3:
