@@ -1,97 +1,109 @@
 arguments:
   parameters:
-  - name: cvat-annotation-path
-    value: cyl-data/license-china/
-    displayName: Path to dataset
-    visibility: public
+    - displayName: Dataset path
+      hint: Path to annotated data (COCO format) in default object storage. In CVAT, this parameter will be pre-populated.
+      name: dataset
+      type: select.dataset
+      value: ""
+      visibility: internal
 
-  - name: cvat-output-path
-    value: workflow-data/output/test-workflow-output
-    visibility: private
+#    - name: cvat-output-path
+#      value: workflow-data/output/test-workflow-output
+#      visibility: private
 
-  - name: detector-path
-    value: artifacts/cyl/cyl-object-detection-5256x/cyl-object-detection-5256x-2554036786/output/model
-    displayName: Path to object detector model
-    visibility: public
-    
-  - name: ocr-image
-    value: cxyacr.azurecr.cn/docker.io/tensorflow/tensorflow:1.13.1-py3
-    displayName: docker image for ocr
-    visibility: public  
+    - name: detector-path
+      value: ""
+      displayName: Path to object detector model
+      visibility: public
 
-  - name: tf-image
-    value: cxyacr.azurecr.cn/docker.io/tensorflow/tensorflow:1.13.1-py3
-    type: select.select
-    displayName: Select TensorFlow image
-    visibility: public
-    hint: Select the GPU image if you are running on a GPU node pool
-    options:
-    - name: 'TensorFlow 1.13.1 CPU Image'
-      value: 'cxyacr.azurecr.cn/docker.io/tensorflow/tensorflow:1.13.1-py3'
-    - name: 'TensorFlow 1.13.1 GPU Image'
-      value: 'cxyacr.azurecr.cn/docker.io/tensorflow/tensorflow:1.13.1-gpu-py3'
-  - displayName: Node pool
-    hint: Name of node pool or group to run this workflow task
-    name: sys-node-pool
-    required: true
-    type: select.nodepool
-    value: 'default'
-    visibility: public
+    - name: ocr-image
+      value: cxyacr.azurecr.cn/docker.io/tensorflow/tensorflow:1.13.1-py3
+      displayName: docker image for ocr
+      visibility: public
+
+    - name: tf-image
+      value: cxyacr.azurecr.cn/docker.io/tensorflow/tensorflow:1.13.1-py3
+      type: select.select
+      displayName: Select TensorFlow image
+      visibility: public
+      hint: Select the GPU image if you are running on a GPU node pool
+      options:
+        - name: 'TensorFlow 1.13.1 CPU Image'
+          value: 'cxyacr.azurecr.cn/docker.io/tensorflow/tensorflow:1.13.1-py3'
+        - name: 'TensorFlow 1.13.1 GPU Image'
+          value: 'cxyacr.azurecr.cn/docker.io/tensorflow/tensorflow:1.13.1-gpu-py3'
+    - displayName: Node pool
+      hint: Name of node pool or group to run this workflow task
+      name: sys-node-pool
+      required: true
+      type: select.nodepool
+      value: default
+      visibility: public
+    - displayName: Node pool label
+      hint: Name of node pool or group to run this workflow task
+      name: sys-node-pool-label
+      type: select.nodepool-label
+      value: node.kubernetes.io/instance-type
 
 entrypoint: main
 templates:
   - name: main
     dag:
       tasks:
-      - name: process-input-data
-        template: bash
-      - name: detect-license-plate
-        dependencies: [process-input-data]
-        template: license-detector
-      - name: detect-ocr
-        dependencies: [detect-license-plate]
-        template: ocr-detector
-   
+        - name: process-input-data
+          template: bash
+        - name: detect-license-plate
+          dependencies: [process-input-data]
+          template: license-detector
+        - name: detect-ocr
+          arguments:
+            artifacts:
+              - from: '{{tasks.detect-license-plate.outputs.artifacts.model}}'
+                name: output-data
+          dependencies: [detect-license-plate]
+          template: ocr-detector
+
   - name: ocr-detector
     nodeSelector:
-      'beta.kubernetes.io/instance-type': '{{workflow.parameters.sys-node-pool}}'  
+      '{{workflow.parameters.sys-node-pool-label}}': '{{workflow.parameters.sys-node-pool}}'
     inputs:
       artifacts:
-      - name: tsrc
-        path: /mnt/src/train
-        git:
-          repo: 'https://github.com/chuangxinyuan/LicensePlateOcr.git'
-          revision: v1.0.0-aimp
-      - git:
-          repo: https://github.com/chuangxinyuan/models.git
-        name: src
-        path: /mnt/src/tf
-      - name: data
-        path: /mnt/data/datasets/
-        s3:
-          key: '{{workflow.parameters.cvat-annotation-path}}'
-      - name: output-data
-        path: /mnt/data/outputdata/
-        s3:
-          key: '{{workflow.namespace}}/{{workflow.parameters.cvat-output-path}}/{{workflow.name}}'
+        - name: tsrc
+          path: /mnt/src/train
+          git:
+            repo: 'https://gitee.com/chuangxinyuan/LicensePlateOcr.git'
+            revision: aimp-v0.95
+        - git:
+            repo: https://gitee.com/chuangxinyuan/models.git
+          name: src
+          path: /mnt/src/tf
+        - name: data
+          path: /mnt/data/datasets/
+          s3:
+            key: '{{workflow.parameters.dataset}}'
+        - name: output-data
+          path: /mnt/data/outputdata/
+#          s3:
+#            key: '{{workflow.namespace}}/{{workflow.parameters.cvat-output-path}}/{{workflow.name}}'
     outputs:
       artifacts:
-      - name: model
-        path: /mnt/output
-        optional: true
-        s3:
-          key: '{{workflow.namespace}}/{{workflow.parameters.cvat-output-path}}/{{workflow.name}}'
+        - name: model
+          path: /mnt/output
+          optional: true
+#          s3:
+#            key: '{{workflow.namespace}}/{{workflow.parameters.cvat-output-path}}/{{workflow.name}}'
     container:
       image: '{{workflow.parameters.ocr-image}}'
       command: [sh,-c]
       args:
-       - |
+        - |
           apt-get update && \
           echo Y | apt-get install build-essential libssl-dev libffi-dev python-dev && \
           apt-get install -y python3-pip git wget unzip libglib2.0-0 libsm6 libxext6 libxrender-dev && \
           cd /mnt/src/tf/research && \
           export PYTHONPATH=$PYTHONPATH:`pwd`:`pwd`/slim && \
           cd /mnt/src/train && \
+          pip install --upgrade pip && \
           pip install -i https://pypi.tuna.tsinghua.edu.cn/simple -r requirements.txt --default-timeout=6000  && \
           cp -f custom.py /mnt/src/tf/research/attention_ocr/python/datasets/ && \
           cp -f __init__.py /mnt/src/tf/research/attention_ocr/python/datasets/ && \
@@ -100,66 +112,67 @@ templates:
           cp -f lpr_model.pth /mnt/src/tf/research/attention_ocr/python/ &&\
           cp -f LPRNet.py /mnt/src/tf/research/attention_ocr/python/ &&\
           cp -f yahei_mono_0.ttf /mnt/src/tf/research/attention_ocr/python/ &&\
-          
+
           cd /mnt/src/tf/research/attention_ocr/python/ && \
 
           ls && \
           export PYTHONPATH=$PYTHONPATH:./datasets/ && \
-          python demo_inference.py 
-            
+          python demo_inference.py
+
       workingDir: /mnt/src
 
   - name: license-detector
     nodeSelector:
-      'beta.kubernetes.io/instance-type': '{{workflow.parameters.sys-node-pool}}' 
+      '{{workflow.parameters.sys-node-pool-label}}': '{{workflow.parameters.sys-node-pool}}'
     inputs:
       artifacts:
-      - name: src
-        path: /mnt/src
-        git:
-          repo: "https://github.com/chuangxinyuan/LicensePlateOcr.git"
-          revision: v1.0.0-aimp
-      - name: data
-        path: /mnt/data/datasets/
-        s3:
-          key: '{{workflow.parameters.cvat-annotation-path}}'
-      - name: models
-        path: /mnt/data/models
-        s3:
-          key: '{{workflow.parameters.detector-path}}'
+        - name: src
+          path: /mnt/src
+          git:
+            repo: "https://gitee.com/chuangxinyuan/LicensePlateOcr.git"
+            revision: aimp-v0.95
+        - name: data
+          path: /mnt/data/datasets/
+          s3:
+            key: '{{workflow.parameters.dataset}}'
+        - name: models
+          path: /mnt/data/models
+          s3:
+            key: '{{workflow.parameters.detector-path}}'
     outputs:
       artifacts:
-      - name: model
-        path: /mnt/output
-        optional: true
-        s3:
-          key: '{{workflow.namespace}}/{{workflow.parameters.cvat-output-path}}/{{workflow.name}}'
+        - name: model
+          path: /mnt/output
+          optional: true
+#          s3:
+#            key: '{{workflow.namespace}}/{{workflow.parameters.cvat-output-path}}/{{workflow.name}}'
     container:
       image: '{{workflow.parameters.tf-image}}'
       command: [sh,-c]
       args:
-       - |
-        ls /mnt/data/ \
-          && apt-get update \
-          && echo Y | apt-get install build-essential libssl-dev libffi-dev python-dev \
-          && apt-get install libgl1-mesa-glx libsm6 libxext6 libglib2.0-0 libxext6 libxrender-dev wget unzip -y \
-          && cd /mnt/src/ \
-          && pip install -i https://pypi.tuna.tsinghua.edu.cn/simple -r requirements.txt --default-timeout=6000 \
-          && python license_detection.py --weights=/mnt/data/models/frozen_inference_graph.pb --dataset=/mnt/data/datasets/images/
+        - |
+          ls /mnt/data/ \
+            && apt-get update \
+            && echo Y | apt-get install build-essential libssl-dev libffi-dev python-dev \
+            && apt-get install libgl1-mesa-glx libsm6 libxext6 libglib2.0-0 libxext6 libxrender-dev wget unzip -y \
+            && cd /mnt/src/ \
+            && pip install --upgrade pip \
+            && pip install -i https://pypi.tuna.tsinghua.edu.cn/simple -r requirements.txt --default-timeout=6000 \
+            && python license_detection.py --weights=/mnt/data/models/frozen_inference_graph.pb --dataset=/mnt/data/datasets/images/
 
       workingDir: /mnt/src
       volumeMounts:
-      - name: output
-        mountPath: /mnt/output
+        - name: output
+          mountPath: /mnt/output
   - name: bash
     nodeSelector:
-      'beta.kubernetes.io/instance-type': '{{workflow.parameters.sys-node-pool}}' 
+      '{{workflow.parameters.sys-node-pool-label}}': '{{workflow.parameters.sys-node-pool}}'
     container:
       args:
-      - sleep 15
+        - sleep 15
       command:
-      - bash
-      - -c
+        - bash
+        - -c
       image: cxyacr.azurecr.cn/docker.io/bash:5.2.0
 volumeClaimTemplates:
   - metadata:
